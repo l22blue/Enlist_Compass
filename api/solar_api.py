@@ -16,7 +16,7 @@ def _call_solar(api_key, system, user, temperature=0.1):
         "Content-Type": "application/json",
     }
     payload = {
-        "model": "solar-pro",  # 또는 solar-mini
+        "model": "solar-1-mini-chat",  # 무료 등급에서 안전하게 지원하는 표준 모델
         "messages": [
             {"role": "system", "content": system},
             {"role": "user", "content": user},
