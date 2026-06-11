@@ -363,14 +363,85 @@ if st.session_state.results is not None:
                 else:
                     st.caption("ℹ️ Google Gemini 키를 설정하시면 AI가 요약해주는 상세 업무 정보를 볼 수 있습니다.")
 
-        # ── [자세히] 화면 표시 (과거 입영일, 평균 지원율, 모집 주기 등 통계 노출) ──
+        # ── [자세히] 화면 표시 (지원자격 + 과거 입영일, 평균 지원율, 모집 주기 등 통계 노출) ──
         if st.session_state.active_details == tk['code']:
             with st.container(border=True):
                 st.markdown(f"##### 📊 **{tk['name']} ({tk['code']}) 과거 모집 및 지원 통계**")
-                
+
+                # ── 지원 자격 섹션 ──
+                st.markdown("#### 📋 지원 자격")
+                qual_col1, qual_col2, qual_col3 = st.columns(3)
+
+                # 요구 전공
+                with qual_col1:
+                    req_majors = tk.get("majors", [])
+                    if req_majors:
+                        st.markdown("**📚 요구 전공**")
+                        # 최대 10개만 표시 (너무 많으면 expander)
+                        display_majors = req_majors[:10]
+                        for m in display_majors:
+                            st.markdown(f"- {m}")
+                        if len(req_majors) > 10:
+                            with st.expander(f"+ {len(req_majors)-10}개 더 보기"):
+                                for m in req_majors[10:]:
+                                    st.markdown(f"- {m}")
+                    else:
+                        st.markdown("**📚 요구 전공**")
+                        st.caption("제한 없음")
+
+                # 요구 자격증
+                with qual_col2:
+                    req_licenses = tk.get("licenses", [])
+                    if req_licenses:
+                        st.markdown("**🎫 요구 자격증**")
+                        display_lics = req_licenses[:10]
+                        for l in display_lics:
+                            st.markdown(f"- {l}")
+                        if len(req_licenses) > 10:
+                            with st.expander(f"+ {len(req_licenses)-10}개 더 보기"):
+                                for l in req_licenses[10:]:
+                                    st.markdown(f"- {l}")
+                    else:
+                        st.markdown("**🎫 요구 자격증**")
+                        st.caption("제한 없음")
+
+                # 신체 조건
+                with qual_col3:
+                    conditions = tk.get("conditions", {})
+                    st.markdown("**🏥 신체 조건**")
+                    if conditions:
+                        for cond_name, (low, high) in conditions.items():
+                            if low and high:
+                                st.markdown(f"- {cond_name}: {low} ~ {high}")
+                            elif low:
+                                st.markdown(f"- {cond_name}: {low} 이상")
+                            elif high:
+                                st.markdown(f"- {cond_name}: {high} 이하")
+                    else:
+                        st.caption("데이터 없음")
+
+                # 가산점 힌트
+                hint = get_hint(tk['code'], tk['name'])
+                if hint:
+                    st.info(hint)
+
+                # 병무청 공식 링크
+                gun_mc = {
+                    "육군": "mma0000501", "해군": "mma0000502",
+                    "공군": "mma0000503", "해병대": "mma0000504",
+                }.get(tk.get("gun", ""), "mma0000501")
+                mma_url = f"https://www.mma.go.kr/contents.do?mc={gun_mc}"
+                st.markdown(
+                    f"<a href='{mma_url}' target='_blank' style='font-size:0.85em;'>🔗 병무청 공식 안내 페이지 바로가기</a>",
+                    unsafe_allow_html=True,
+                )
+
+                st.divider()
+
                 # 접수현황 API/Mock 정보 가져오기
                 with st.spinner("통계 데이터를 가져오는 중..."):
                     stats = mma_api.get_jeopsu_details(mma_key, tk['code'], tk['name'], tk['gun'], tk['category'])
+
                 
                 # 통계 요약 박스 (평균 지원율 & 모집 주기)
                 col_stat1, col_stat2 = st.columns(2)
