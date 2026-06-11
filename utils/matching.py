@@ -27,8 +27,6 @@ def find_grade_condition(conditions):
         if "신체등급" in name or "신체 등급" in name or "등급" in name:
             return _to_float(low), name
     return None, None
-
-
 def is_major_compatible(user_major, req_major):
     """
     사용자 전공과 모집 요구 전공이 호환되는지 판정 (유연한 휴리스틱 적용).
@@ -42,9 +40,10 @@ def is_major_compatible(user_major, req_major):
     if u in r or r in u:
         return True
 
-    # 2. 전공명 접미사 제거 비교 (학과, 학부, 전공, 과, 학 등)
+    # 2. 전공명 접미사 제거 비교 (학과, 학부, 전공, 과 등)
+    # ※ '학'은 제거 시 '신학'이 '신'이 되어 '신소재'에 오매칭되는 등의 문제가 있어 접미사에서 제외.
     def clean_suffix(s):
-        suffixes = ["학과", "학부", "전공", "과", "학"]
+        suffixes = ["학과", "학부", "전공", "과"]
         changed = True
         while changed:
             changed = False
@@ -59,8 +58,12 @@ def is_major_compatible(user_major, req_major):
     r_stem = clean_suffix(r)
 
     if u_stem and r_stem:
-        if u_stem in r_stem or r_stem in u_stem:
+        if u_stem == r_stem:
             return True
+        # 1글자짜리 어간은 과도한 매칭(False Positive)을 유발하므로 2글자 이상일 때만 부분일치 허용
+        if len(u_stem) >= 2 and len(r_stem) >= 2:
+            if u_stem in r_stem or r_stem in u_stem:
+                return True
 
     # 3. 핵심 공통 키워드 그룹 비교 (동일 계열 전공 판정)
     groups = [
