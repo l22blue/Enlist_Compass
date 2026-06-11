@@ -189,29 +189,39 @@ def get_jeopsu_details(service_key, specialty_code, specialty_name, gun, categor
     rounds = []
     for it in matched:
         try:
-            # 입영년월값 (예: 202609) -> '26.09' 포맷팅
+            # 입영년월: ipyeongDe가 '*'이면 접수종료일(jeopsuJrdtm, 8자리 YYYYMMDD)에서 추정
             ipyeong_de = it.get("ipyeongDe") or ""
-            if len(ipyeong_de) == 6:
+            if ipyeong_de and ipyeong_de != "*" and len(ipyeong_de) == 6:
                 enlist_date = f"{ipyeong_de[2:4]}.{ipyeong_de[4:]}"
             else:
-                enlist_date = ipyeong_de or "-"
-                
-            # 정원 및 지원인원
-            plan = int(it.get("planInwon") or it.get("planNm") or 0)
-            applied = int(it.get("applyInwon") or it.get("jeopsuInwon") or 0)
-            rate = round(applied / plan, 2) if plan > 0 else 0.0
-            
+                # 접수종료일 기준 다음 달 = 입영월로 추정
+                jrd = it.get("jeopsuJrdtm") or ""
+                if len(jrd) >= 6:
+                    yr, mo = int(jrd[2:4]), int(jrd[4:6]) + 1
+                    if mo > 12:
+                        mo, yr = 1, yr + 1
+                    enlist_date = f"{yr:02d}.{mo:02d}"
+                else:
+                    enlist_date = "-"
+
+            # 선발인원(정원), 접수인원(지원자), 경쟁률
+            plan = int(it.get("seonbalPcnt") or 0)
+            applied = int(it.get("jeopsuPcnt") or 0)
+            raw_rate = it.get("rate")
+            rate = float(raw_rate) if raw_rate else (round(applied / plan, 2) if plan > 0 else 0.0)
+
             # 입영부대
-            unit = it.get("ipyeongJildaeNm") or it.get("ipyeongJildae") or "-"
-            
-            # 라벨 결정 (오늘 날짜 기준)
-            # 여기서는 기본적으로 '접수마감' 혹은 '전역' 등으로 처리
-            label = "접수마감"
-            
+            unit = it.get("iybudaeCdm") or "-"
+
+            # 모집년도·차수로 라벨
+            yy = it.get("mojipYy", "")
+            tms = it.get("mojipTms", "")
+            label = f"{yy}-{tms}차" if yy and tms else "접수마감"
+
             rounds.append({
                 "enlist_date": enlist_date,
                 "label": label,
-                "category": category,
+                "category": it.get("mojipGbnm") or category,
                 "unit": unit,
                 "plan": plan,
                 "applied": applied,
