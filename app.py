@@ -158,12 +158,12 @@ with c3:
     st.markdown("<p style='font-size: 0.8em; color: #546E7A; margin: 0 0 2px 0; font-weight: bold;'>💡 자주 찾는 학과</p>", unsafe_allow_html=True)
     qb_cols = st.columns(6)
     qbs = [
-        ("💻 컴퓨터", "컴퓨터공학과"),
-        ("🔧 기계", "기계공학과"),
-        ("⚡ 전자", "전자공학과"),
-        ("🧪 화학", "화학공학과"),
-        ("📈 경영", "경영학과"),
-        ("⛪ 신학", "신학과")
+        ("💻 컴퓨터공학", "컴퓨터공학과"),
+        ("⚡ 전기전자", "전기전자공학과"),
+        ("🔧 기계공학", "기계공학과"),
+        ("🧪 화학공학", "화학공학과"),
+        ("🧱 토목건축", "토목공학과"),
+        ("📈 경영학", "경영학과")
     ]
     for col, (label, name) in zip(qb_cols, qbs):
         if col.button(label, key=f"qb_{name}", use_container_width=True):
