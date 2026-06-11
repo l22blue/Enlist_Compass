@@ -45,9 +45,21 @@ def is_major_compatible(user_major, req_major):
     u = user_major.replace(" ", "").lower()
     r = req_major.replace(" ", "").lower()
 
-    # 1. 완전 포함 관계 비교 (기본)
+    # 1. 신학(Theology) 학과 오매칭 차단 (예: 신학과 vs 정보통신학과)
+    # 한쪽이 신학/기독교/종교 계열이고 다른 한쪽이 아닌 경우 매칭 차단 (정보통신학과에 포함된 '신학과' 텍스트로 인한 오매칭 방지)
+    def is_theology(s):
+        has_theo = "신학" in s or "기독교" in s or "종교" in s or "선교" in s
+        if "통신" in s and not ("기독교" in s or "종교" in s or "선교" in s):
+            return False
+        return has_theo
+
+    if is_theology(u) != is_theology(r):
+        return False
+
+    # 2. 완전 포함 관계 비교 (기본)
     if u in r or r in u:
         return True
+
 
     # 2. 전공명 접미사 제거 비교 (학과, 학부, 전공, 과 등)
     # ※ '학'은 제거 시 '신학'이 '신'이 되어 '신소재'에 오매칭되는 등의 문제가 있어 접미사에서 제외.
