@@ -3,6 +3,7 @@
 실행: streamlit run app.py
 """
 import streamlit as st
+from datetime import datetime
 from api import mma_api, solar_api
 from utils import matching
 
@@ -15,6 +16,17 @@ def get_secret(name):
         return st.secrets.get(name, "")
     except Exception:
         return ""
+
+
+def format_datetime(dt_str):
+    """ISO 8601 형식의 날짜 문자열(예: 2026-05-28T14:00:00+09:00)을 'YYYY-MM-DD HH:MM' 형식으로 변환"""
+    if not dt_str:
+        return ""
+    try:
+        dt = datetime.fromisoformat(dt_str)
+        return dt.strftime("%Y-%m-%d %H:%M")
+    except Exception:
+        return dt_str
 
 # ── 세션 상태 초기화 ──
 if "user" not in st.session_state:
@@ -209,7 +221,9 @@ if st.session_state.results is not None:
 
                 # 모집 일정
                 if tk.get("apply_start"):
-                    st.caption(f"📅 접수: {tk['apply_start']} ~ {tk.get('apply_end','')}")
+                    start_formatted = format_datetime(tk['apply_start'])
+                    end_formatted = format_datetime(tk.get('apply_end',''))
+                    st.caption(f"📅 접수: {start_formatted} ~ {end_formatted}")
 
                 # 통과 사유
                 for r in elig["reasons"]:
