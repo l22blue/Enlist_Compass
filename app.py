@@ -75,6 +75,8 @@ def get_recruitment_status(tk, now):
         return "ERROR", ""
 
 # ── 세션 상태 초기화 ──
+if "page" not in st.session_state:
+    st.session_state.page = "intro"
 if "user" not in st.session_state:
     st.session_state.user = {}
 if "results" not in st.session_state:
@@ -97,7 +99,124 @@ _gemini = get_secret("GEMINI_API_KEY")
 mma_key = _mma
 gemini_key = _gemini
 
-# ── 헤더 영역 (메인 화면) ──
+# ── 인트로 (설문조사) 페이지 분기 ──
+if st.session_state.page == "intro":
+    st.title("🧭 입대 나침반")
+    st.caption("내 조건으로 지원 가능한 군 보직을 한눈에 찾아보세요.")
+    st.warning("⚠️ 본 서비스의 정보는 참고용이며, 실제 모집 요건은 반드시 병무청 공고를 확인하세요.")
+    
+    st.divider()
+    
+    st.subheader("혹시 카투사(KATUSA)를 지원해 보셨나요?")
+    st.caption("카투사는 평생 단 1회만 지원 가능한 인기 보직으로, 지원 이력에 따라 최적의 경로를 안내합니다.")
+    
+    option = st.radio(
+        "아래 항목 중 본인에게 해당하는 항목을 선택하세요:",
+        [
+            "1️⃣ 네, 지원해 봤는데 떨어졌어요 (또는 탈락했어요)",
+            "2️⃣ 아니요, 아직 안 해봤어요 (지원 예정 / 관심 있음)",
+            "3️⃣ 카투사는 생각 없어요"
+        ],
+        index=None,
+        key="katusa_survey_radio"
+    )
+    
+    # 사이드바 구성 (일관성 유지)
+    with st.sidebar:
+        st.markdown("### 🧭 입대 나침반")
+        st.caption("내 조건으로 군 보직 찾기")
+        st.info("카투사 설문을 마친 후 메인 서비스로 진입할 수 있습니다.")
+    
+    if option:
+        if option.startswith("1️⃣"):
+            st.session_state.page = "main"
+            st.rerun()
+        else:
+            if option.startswith("3️⃣"):
+                st.info("💡 카투사는 미군과 함께 복무하며 우수한 생활 시설과 영어 학습 기회를 얻을 수 있어 선호도가 매우 높은 보직입니다. 생각해보지 않으셨더라도 아래 모집 조건과 혜택을 한 번 검토해 보시는 것을 적극 추천해 드립니다!")
+            
+            st.divider()
+            st.markdown("### 🇺🇸 모집 안내: 카투사 (KATUSA)")
+            st.write("카투사(Korean Augmentation To the United States Army)는 미8군에 배속된 한국군 육군 요원으로, 한미 연합 방위태세 강화를 위한 임무를 수행합니다.")
+            
+            # 카드 레이아웃을 위한 2단 배치
+            col_info1, col_info2 = st.columns(2)
+            
+            with col_info1:
+                with st.container(border=True):
+                    st.markdown("#### 📋 기본 지원 자격")
+                    st.markdown("""
+                    * **연령**: 지원서 접수년도 기준 **18세 이상 28세 이하**
+                      * *(2026년 모집 기준: 1998. 1. 1. ~ 2008. 12. 31. 출생자)*
+                    * **신체등급**: 병역판정검사 결과 **1급 ~ 4급** 현역병입영대상자
+                      * *아직 검사를 받지 않은 사람도 현역병 지원 신체검사 결과 1~4급이면 가능합니다.*
+                    * **제한 사항**: 현역병(징집병) 입영기일이 결정된 사람은 그 입영기일 30일 전까지 지원 완료해야 함
+                    """)
+            
+            with col_info2:
+                with st.container(border=True):
+                    st.markdown("#### 🚫 선발 제외 대상")
+                    st.markdown("""
+                    * 범죄경력 조회결과(경찰청) **징역 또는 금고의 실형(집행유예 포함)**을 선고받은 사람 (기소유예는 무관)
+                    * 현재 수사 또는 재판 중에 있는 사람
+                    * 대체역 편입원을 제출한 사람
+                    * ※ 최종 합격했더라도 입영 시점에 범죄경력 등이 확인되면 선발이 즉시 취소됩니다.
+                    """)
+            
+            st.markdown("#### 🔠 영어 어학성적 기준 (2026년 기준)")
+            st.markdown("접수일 기준 **5년 이내**에 응시하고 성적이 발표된 **정기시험** 성적만 인정됩니다.")
+            
+            st.markdown("""
+            | 시험 종류 | 기준 점수 | 응시 구분 | 비고 |
+            | :--- | :---: | :---: | :--- |
+            | **TOEIC** | **780점** 이상 | 국내·외 | 정기시험 성적만 인정 |
+            | **TEPS** | **299점** 이상 | 국내 | |
+            | **TOEFL iBT** | **73점** 이상 | 국내·외 | 2026. 1. 20. 이전 응시자는 **83점** 이상 적용 |
+            | **G-TELP (Level 2)** | **73점** 이상 | 국내 | |
+            | **FLEX** | **690점** 이상 | 국내 | |
+            | **OPIc** | **IM2** 이상 | 국내 | |
+            | **TOEIC Speaking** | **140점** 이상 | 국내·외 | |
+            | **TEPS Speaking** | **83점** 이상 | 국내 | 개편 전 응시자는 **61점** 이상 적용 |
+            """)
+            st.caption("※ 어학시험은 특별(수시)시험은 지원 불가합니다. 국외 응시 토익(일본 제외) 등은 사전등록이 불가하여 성적표 원본 제출이 필요합니다.")
+            
+            col_info3, col_info4 = st.columns(2)
+            with col_info3:
+                with st.container(border=True):
+                    st.markdown("#### 📂 구비 서류 및 발급 절차")
+                    st.markdown("""
+                    * **제출 서류**: 어학성적사전등록확인서 (정부24 발급)
+                    * **발급 및 확인 절차**:
+                      1. [국가공무원채용시스템](https://gongmuwon.gosi.kr) 접속 → '어학성적 사전등록' 신청 및 등록
+                      2. [정부24](https://www.gov.kr) 접속 → '어학성적 사전등록 확인서 교부' 검색 → 신청 및 출력
+                    """)
+            
+            with col_info4:
+                with st.container(border=True):
+                    st.markdown("#### 📅 2026년 모집 및 선발 일정")
+                    st.markdown("""
+                    * **지원 횟수**: **평생 단 1회만 지원 가능** (접수 취소 또는 신검 불합격자는 재지원 가능)
+                    * **접수 기간**: **2026. 7. 9. (목) ~ 7. 15. (수)**
+                    * **접수 방법**: 병무청 누리집 → 병무민원포털 → 군지원 → 통합지원서 작성
+                    * **선발 일자 및 방식**: **2026. 9. 1. (화)** / 입영희망월 및 어학성적대별 비율을 적용하여 **전산 무작위 추첨**
+                    """)
+            
+            st.markdown("<br>", unsafe_allow_html=True)
+            if st.button("🧭 내 조건으로 지원 가능한 군 보직 찾으러 가기", type="primary", use_container_width=True):
+                st.session_state.page = "main"
+                st.rerun()
+                
+    st.stop()
+
+# ── 메인 화면 ──
+with st.sidebar:
+    st.markdown("### 🧭 입대 나침반")
+    st.caption("내 조건으로 군 보직 찾기")
+    st.divider()
+    if st.button("↩️ 처음으로 (설문 화면)", use_container_width=True):
+        st.session_state.page = "intro"
+        st.rerun()
+
 st.title("🧭 입대 나침반")
 st.caption("내 조건으로 지원 가능한 군 보직을 한눈에 찾아보세요.")
 
