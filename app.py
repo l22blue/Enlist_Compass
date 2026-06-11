@@ -163,7 +163,7 @@ st.divider()
 if "license_count" not in st.session_state:
     st.session_state.license_count = 1
 
-c3, c4 = st.columns(2)
+c3, c4 = st.columns([5.8, 4.2])
 with c3:
     st.markdown("**전공 학과** (고등학교 졸업생은 입력 생략 가능)")
     major_input = st.text_input("주전공 학과 (선택)", key="major_input_key", placeholder="예: 컴퓨터공학과, 기계공학과...")
