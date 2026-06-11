@@ -195,18 +195,20 @@ if st.button("🔍 지원 가능한 보직 찾기", type="primary", use_containe
                 all_licenses.update(tk.get("licenses", []))
 
             # 주전공 정규화
+            sorted_majors = tuple(sorted(all_majors))  # 캐시 키 고정을 위해 정렬된 tuple 사용
+            sorted_licenses = tuple(sorted(all_licenses))
             if major_input:
                 with st.spinner("Gemini AI로 주전공 학과명을 표준화하는 중..."):
-                    normalized_major = gemini_api.normalize_major(gemini_key, major_input, list(all_majors))
+                    normalized_major = gemini_api.normalize_major(gemini_key, major_input, sorted_majors)
             # 이중전공 정규화
             if double_major_input:
                 with st.spinner("Gemini AI로 이중전공 학과명을 표준화하는 중..."):
-                    normalized_double_major = gemini_api.normalize_major(gemini_key, double_major_input, list(all_majors))
+                    normalized_double_major = gemini_api.normalize_major(gemini_key, double_major_input, sorted_majors)
             # 다중 자격증 정규화
             if license_inputs:
                 with st.spinner("Gemini AI로 자격증 명칭들을 표준화하는 중..."):
                     for lic in license_inputs:
-                        norm_lic = gemini_api.normalize_license(gemini_key, lic, list(all_licenses))
+                        norm_lic = gemini_api.normalize_license(gemini_key, lic, sorted_licenses)
                         if norm_lic:
                             normalized_licenses.append(norm_lic)
 
