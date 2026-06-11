@@ -3,7 +3,7 @@
 실행: streamlit run app.py
 """
 import streamlit as st
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 from api import mma_api, solar_api
 from utils import matching
 
@@ -27,6 +27,31 @@ def format_datetime(dt_str):
         return dt.strftime("%Y-%m-%d %H:%M")
     except Exception:
         return dt_str
+
+
+def get_recruitment_status(tk, now):
+    """보직의 모집 상태와 포맷팅된 기간 반환. 이미 지난 접수 일정은 표시하지 않음."""
+    start_str = tk.get("apply_start")
+    end_str = tk.get("apply_end")
+    if not start_str or not end_str:
+        return "NO_DATE", ""
+    try:
+        start_dt = datetime.fromisoformat(start_str)
+        end_dt = datetime.fromisoformat(end_str)
+        
+        if end_dt < now:
+            # 접수 종료된 과거 정보
+            return "CLOSED", ""
+            
+        start_fmt = start_dt.strftime("%Y-%m-%d %H:%M")
+        end_fmt = end_dt.strftime("%Y-%m-%d %H:%M")
+        
+        if start_dt <= now <= end_dt:
+            return "OPEN", f"🟢 **접수 중**: {start_fmt} ~ {end_fmt}"
+        else:
+            return "UPCOMING", f"🔵 **접수 예정**: {start_fmt} ~ {end_fmt}"
+    except Exception:
+        return "ERROR", ""
 
 # ── 세션 상태 초기화 ──
 if "user" not in st.session_state:
@@ -204,26 +229,39 @@ if st.session_state.results is not None:
     results = st.session_state.results
     eligible = [r for r in results if r[1]["eligible"]]
 
-    st.subheader(f"지원 가능한 보직 {len(eligible)}개를 찾았어요")
+    # 현재 KST 기준 시간 구하기
+    now = datetime.now(timezone(timedelta(hours=9)))
 
-    if not eligible:
-        st.info("입력하신 조건으로 지원 가능한 보직이 없어요. "
-                "군종을 '전체'로 바꾸거나 조건을 조정해보세요.")
+    # 모집 일정 상태 매핑 및 가공
+    eligible_with_status = []
+    for tk, elig in eligible:
+        status, period_str = get_recruitment_status(tk, now)
+        eligible_with_status.append((tk, elig, status, period_str))
+
+    # 필터 옵션 UI
+    show_only_active = st.checkbox("🟢 현재 접수 중 또는 🔵 접수 예정인 보직만 보기", value=False)
+
+    if show_only_active:
+        eligible_with_status = [item for item in eligible_with_status if item[2] in ("OPEN", "UPCOMING")]
+
+    st.subheader(f"지원 가능한 보직 {len(eligible_with_status)}개를 찾았어요")
+
+    if not eligible_with_status:
+        st.info("조건을 만족하는 보직이 없거나 필터 조건에 맞는 모집 일정이 없습니다. "
+                "조건을 조정하거나 필터 체크박스를 해제해 보세요.")
 
     # 카드 3열 그리드
     cols = st.columns(3)
-    for i, (tk, elig) in enumerate(eligible):
+    for i, (tk, elig, status, period_str) in enumerate(eligible_with_status):
         with cols[i % 3]:
             with st.container(border=True):
                 st.markdown(f"**{tk['name']} ({tk['code']})**")
                 category_str = f" · {tk['category']}" if tk.get("category") else ""
                 st.caption(f"{tk['gun']}{category_str} · {tk.get('field', '')}")
 
-                # 모집 일정
-                if tk.get("apply_start"):
-                    start_formatted = format_datetime(tk['apply_start'])
-                    end_formatted = format_datetime(tk.get('apply_end',''))
-                    st.caption(f"📅 접수: {start_formatted} ~ {end_formatted}")
+                # 모집 일정 (접수 종료된 과거 정보 등은 period_str이 빈 값으로 오며 미표출됨)
+                if period_str:
+                    st.caption(period_str)
 
                 # 통과 사유
                 for r in elig["reasons"]:
