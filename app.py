@@ -5,12 +5,12 @@
 import streamlit as st
 from datetime import datetime, timezone, timedelta
 import importlib
-from api import mma_api, solar_api
+from api import mma_api, gemini_api
 from utils import matching
 
 # Streamlit Cloud 모듈 캐싱 방지용 강제 리로드
 importlib.reload(mma_api)
-importlib.reload(solar_api)
+importlib.reload(gemini_api)
 importlib.reload(matching)
 
 st.set_page_config(page_title="입대 나침반", page_icon="🧭", layout="wide")
@@ -76,25 +76,25 @@ local_data = mma_api.load_local_data()
 
 # secrets.toml에 키가 있으면 자동 사용, 없으면 입력창 표시
 _mma = get_secret("MMA_API_KEY")
-_solar = get_secret("SOLAR_API_KEY")
+_gemini = get_secret("GEMINI_API_KEY")
 
 # API 키 설정 초기화
 mma_key = _mma
-solar_key = _solar
+gemini_key = _gemini
 
 # ── 헤더 영역 (메인 화면) ──
 st.title("🧭 입대 나침반")
 st.caption("내 조건으로 지원 가능한 군 보직을 한눈에 찾아보세요.")
 
 # 만약 API 키가 누락되었을 때만 expander 형태로 표시
-if not _mma or not _solar:
+if not _mma or not _gemini:
     with st.expander("🔑 API 키 설정 (키가 누락된 경우에만 입력하세요)", expanded=True):
         if not _mma:
             mma_key = st.text_input("병무청 API 키", type="password",
                                     help="공공데이터포털에서 발급한 키")
-        if not _solar:
-            solar_key = st.text_input("Upstage Solar 키 (선택)", type="password",
-                                      help="학과/자격증 자동 매칭에 사용")
+        if not _gemini:
+            gemini_key = st.text_input("Google Gemini 키 (선택)", type="password",
+                                       help="학과/자격증 자동 매칭에 사용 (Google AI Studio에서 발급)")
 
 st.warning("⚠️ 본 서비스의 정보는 참고용이며, 실제 모집 요건은 반드시 병무청 공고를 확인하세요.")
 
@@ -185,7 +185,7 @@ if st.button("🔍 지원 가능한 보직 찾기", type="primary", use_containe
         normalized_double_major = ""
         normalized_licenses = []
 
-        if solar_key:
+        if gemini_key:
             all_majors = set()
             all_licenses = set()
             for code, tk in teukgi_master.items():
@@ -196,17 +196,17 @@ if st.button("🔍 지원 가능한 보직 찾기", type="primary", use_containe
 
             # 주전공 정규화
             if major_input:
-                with st.spinner("Solar LLM으로 주전공 학과명을 표준화하는 중..."):
-                    normalized_major = solar_api.normalize_major(solar_key, major_input, list(all_majors))
+                with st.spinner("Gemini AI로 주전공 학과명을 표준화하는 중..."):
+                    normalized_major = gemini_api.normalize_major(gemini_key, major_input, list(all_majors))
             # 이중전공 정규화
             if double_major_input:
-                with st.spinner("Solar LLM으로 이중전공 학과명을 표준화하는 중..."):
-                    normalized_double_major = solar_api.normalize_major(solar_key, double_major_input, list(all_majors))
+                with st.spinner("Gemini AI로 이중전공 학과명을 표준화하는 중..."):
+                    normalized_double_major = gemini_api.normalize_major(gemini_key, double_major_input, list(all_majors))
             # 다중 자격증 정규화
             if license_inputs:
-                with st.spinner("Solar LLM으로 자격증 명칭들을 표준화하는 중..."):
+                with st.spinner("Gemini AI로 자격증 명칭들을 표준화하는 중..."):
                     for lic in license_inputs:
-                        norm_lic = solar_api.normalize_license(solar_key, lic, list(all_licenses))
+                        norm_lic = gemini_api.normalize_license(gemini_key, lic, list(all_licenses))
                         if norm_lic:
                             normalized_licenses.append(norm_lic)
 
@@ -322,13 +322,13 @@ if st.session_state.results is not None:
                 for r in elig["reasons"]:
                     st.markdown(f"- {r}")
                 
-                if solar_key:
-                    with st.spinner("LLM으로 업무 요약 중..."):
-                        desc = solar_api.summarize_duty(solar_key, tk["name"])
+                if gemini_key:
+                    with st.spinner("Gemini AI로 업무 요약 중..."):
+                        desc = gemini_api.summarize_duty(gemini_key, tk["name"])
                     if desc:
                         st.info(desc)
                 else:
-                    st.caption("ℹ️ Upstage Solar 키를 설정하시면 LLM이 요약해주는 상세 업무 정보를 볼 수 있습니다.")
+                    st.caption("ℹ️ Google Gemini 키를 설정하시면 AI가 요약해주는 상세 업무 정보를 볼 수 있습니다.")
 
         # ── [자세히] 화면 표시 (과거 입영일, 평균 지원율, 모집 주기 등 통계 노출) ──
         if st.session_state.active_details == tk['code']:
