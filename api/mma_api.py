@@ -175,10 +175,11 @@ def get_jeopsu_details(service_key, specialty_code, specialty_name, gun, categor
     
     if raw_items:
         for it in raw_items:
-            # 특기코드 또는 명칭 매칭
+            # 특기코드 또는 명칭 매칭 + 군종 필터 (육군이면 육군 데이터만)
             code_match = it.get("gsteukgiCd") == specialty_code or it.get("teukgiCd") == specialty_code
             name_match = it.get("gsteukgiNm") == specialty_name or it.get("teukgiNm") == specialty_name
-            if code_match or name_match:
+            gun_match = it.get("gunGbnm", "") == gun
+            if (code_match or name_match) and gun_match:
                 matched.append(it)
                 
     # API 데이터가 없거나 403 에러 등으로 가져올 수 없으면 고유 시드 기반의 고품질 Mock 데이터 생성
