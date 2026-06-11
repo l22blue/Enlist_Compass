@@ -56,9 +56,20 @@ def is_major_compatible(user_major, req_major):
     if is_theology(u) != is_theology(r):
         return False
 
-    # 2. 완전 포함 관계 비교 (기본)
+    # 2. 디자인/미디어/영상/사진/예술 전공과 순수 기술/공학(전자, 전기, 컴퓨터, IT, 기계 등) 전공의 오매칭 차단
+    # 예: 요구 전공이 미디어/디자인/콘텐츠 등을 요구하는데, 사용자 전공은 관련 키워드가 없는 순수 공학인 경우 기각
+    media_design_kws = {"디자인", "미디어", "콘텐츠", "사진", "영상", "멀티미디어", "예술", "시각", "애니메이션", "웹"}
+    r_has_media = any(kw in r for kw in media_design_kws)
+    u_has_media = any(kw in u for kw in media_design_kws)
+    if r_has_media and not u_has_media:
+        pure_eng_kws = {"전자", "전기", "반도체", "컴퓨터", "소프트웨어", "sw", "전산", "it", "기계", "제어계측", "신소재"}
+        if any(kw in u for kw in pure_eng_kws):
+            return False
+
+    # 3. 완전 포함 관계 비교 (기본)
     if u in r or r in u:
         return True
+
 
 
     # 2. 전공명 접미사 제거 비교 (학과, 학부, 전공, 과 등)
