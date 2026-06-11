@@ -69,15 +69,28 @@ def is_major_compatible(user_major, req_major):
     if u_stem and r_stem:
         if u_stem == r_stem:
             return True
-        # 1글자짜리 어간은 과도한 매칭(False Positive)을 유발하므로 2글자 이상일 때만 부분일치 허용
         if len(u_stem) >= 2 and len(r_stem) >= 2:
             if u_stem in r_stem or r_stem in u_stem:
+                # 경영 vs 경영정보 오매칭 차단
+                if ("경영" in u_stem and "경영정보" in r_stem) or ("경영" in r_stem and "경영정보" in u_stem):
+                    if not ("경영정보" in u_stem and "경영정보" in r_stem):
+                        return False
+                # 일반 행정 vs 경찰행정/소방행정 오매칭 차단
+                if ("행정" in u_stem and ("경찰" in r_stem or "소방" in r_stem)) or ("행정" in r_stem and ("경찰" in u_stem or "소방" in u_stem)):
+                    if not (("경찰" in u_stem or "소방" in u_stem) and ("경찰" in r_stem or "소방" in r_stem)):
+                        return False
                 return True
 
     # 3. 핵심 공통 키워드 그룹 비교 (동일 계열 전공 판정)
     groups = [
-        # 전산/컴퓨터/SW/보안/통신 계열
-        {"컴퓨터", "소프트웨어", "전산", "it", "sw", "개발", "정보통신", "통신", "보안", "정보보호", "전자계산", "네트워크", "시스템", "프로그래밍", "멀티미디어", "웹"},
+        # 전산/컴퓨터/SW/개발 계열
+        {"컴퓨터", "소프트웨어", "전산", "it", "sw", "개발", "전자계산", "프로그래밍"},
+        # 정보보호/보안 계열
+        {"보안", "정보보호", "해킹"},
+        # 정보통신/네트워크/시스템 계열
+        {"정보통신", "통신", "네트워크", "시스템"},
+        # 멀티미디어/웹 계열
+        {"멀티미디어", "웹"},
         # 전자/전기 계열
         {"전자", "전기", "반도체", "제어계측"},
         # 기계 계열
@@ -180,6 +193,152 @@ def check_eligibility(teukgi, user):
         else:
             h_range_str = f"{hlow}cm 이상" if hhigh is None else f"{hhigh}cm 이하" if hlow is None else f"{hlow} ~ {hhigh}cm"
             reasons.append(f"⚠️ 신장 요구 {h_range_str} (미입력)")
+
+    # ③-3 전문특기병 정밀 하드코딩 필터 (최신 공식 기준 적용)
+    code = teukgi.get("code", "")
+    
+    # 훈련소조교병 (111292)
+    if code == "111292":
+        ug = user.get("body_grade")
+        if ug and ug > 2:
+            msg = f"❌ 신체등급 제한 (조교병 요구 1~2급 / 내 {ug}급)"
+            reasons.append(msg)
+            blockers.append(msg)
+            eligible = False
+        uh = user.get("height")
+        if uh and uh < 170:
+            msg = f"❌ 신장 미달 (조교병 요구 170cm 이상 / 내 {uh}cm)"
+            reasons.append(msg)
+            blockers.append(msg)
+            eligible = False
+        uw = user.get("weight")
+        if uw and uw < 56:
+            msg = f"❌ 체중 미달 (조교병 요구 56kg 이상 / 내 {uw}kg)"
+            reasons.append(msg)
+            blockers.append(msg)
+            eligible = False
+        ucv = user.get("vision_corrected")
+        if ucv and ucv < 0.8:
+            msg = f"❌ 시력 미달 (조교병 요구 교정시력 0.8 이상 / 내 {ucv})"
+            reasons.append(msg)
+            blockers.append(msg)
+            eligible = False
+        if user.get("has_disc_joint"):
+            msg = "❌ 지원 불가 (디스크/관절 이상자 지원 불가)"
+            reasons.append(msg)
+            blockers.append(msg)
+            eligible = False
+        if user.get("has_tattoo"):
+            msg = "❌ 지원 불가 (문신 보유자 지원 불가)"
+            reasons.append(msg)
+            blockers.append(msg)
+            eligible = False
+            
+    # 의장병 (111284)
+    elif code == "111284":
+        ug = user.get("body_grade")
+        if ug and ug > 3:
+            msg = f"❌ 신체등급 제한 (의장병 요구 1~3급 / 내 {ug}급)"
+            reasons.append(msg)
+            blockers.append(msg)
+            eligible = False
+        uh = user.get("height")
+        if uh and uh < 180:
+            msg = f"❌ 신장 미달 (의장병 요구 180cm 이상 / 내 {uh}cm)"
+            reasons.append(msg)
+            blockers.append(msg)
+            eligible = False
+        uw = user.get("weight")
+        if uw and (uw < 65 or uw > 90):
+            msg = f"❌ 체중 제한 (의장병 요구 65~90kg / 내 {uw}kg)"
+            reasons.append(msg)
+            blockers.append(msg)
+            eligible = False
+        if user.get("has_disc_joint"):
+            msg = "❌ 지원 불가 (디스크/관절 이상자 지원 불가)"
+            reasons.append(msg)
+            blockers.append(msg)
+            eligible = False
+        if user.get("has_tattoo"):
+            msg = "❌ 지원 불가 (문신 보유자 지원 불가)"
+            reasons.append(msg)
+            blockers.append(msg)
+            eligible = False
+
+    # 특임군사경찰 (321102) / MC군사경찰 (321103)
+    elif code in ("321102", "321103"):
+        ug = user.get("body_grade")
+        if ug and ug > 2:
+            msg = f"❌ 신체등급 제한 (군사경찰 요구 1~2급 / 내 {ug}급)"
+            reasons.append(msg)
+            blockers.append(msg)
+            eligible = False
+        uh = user.get("height")
+        if uh and uh < 168:
+            msg = f"❌ 신장 미달 (군사경찰 요구 168cm 이상 / 내 {uh}cm)"
+            reasons.append(msg)
+            blockers.append(msg)
+            eligible = False
+        ucv = user.get("vision_corrected")
+        if ucv and ucv < 0.8:
+            msg = f"❌ 시력 미달 (군사경찰 요구 교정시력 0.8 이상 / 내 {ucv})"
+            reasons.append(msg)
+            blockers.append(msg)
+            eligible = False
+        if user.get("has_disc_joint"):
+            msg = "❌ 지원 불가 (디스크/관절 이상자 지원 불가)"
+            reasons.append(msg)
+            blockers.append(msg)
+            eligible = False
+        if user.get("has_tattoo"):
+            msg = "❌ 지원 불가 (문신 보유자 지원 불가)"
+            reasons.append(msg)
+            blockers.append(msg)
+            eligible = False
+        if user.get("has_color_blindness"):
+            msg = "❌ 지원 불가 (색각 장애 보유자 지원 불가)"
+            reasons.append(msg)
+            blockers.append(msg)
+            eligible = False
+
+    # 특전병 (112100)
+    elif code == "112100":
+        ug = user.get("body_grade")
+        if ug and ug > 2:
+            msg = f"❌ 신체등급 제한 (특전병 요구 1~2급 / 내 {ug}급)"
+            reasons.append(msg)
+            blockers.append(msg)
+            eligible = False
+        ucv = user.get("vision_corrected")
+        if ucv and ucv < 0.8:
+            msg = f"❌ 시력 미달 (특전병 요구 교정시력 0.8 이상 / 내 {ucv})"
+            reasons.append(msg)
+            blockers.append(msg)
+            eligible = False
+        if user.get("has_disc_joint"):
+            msg = "❌ 지원 불가 (디스크/관절 이상자 지원 불가)"
+            reasons.append(msg)
+            blockers.append(msg)
+            eligible = False
+        if user.get("has_color_blindness"):
+            msg = "❌ 지원 불가 (색각 장애 보유자 지원 불가)"
+            reasons.append(msg)
+            blockers.append(msg)
+            eligible = False
+
+    # 지식재산관리병 (311334)
+    elif code == "311334":
+        user_lics = user.get("normalized_licenses") or user.get("license_inputs") or []
+        has_patent_license = False
+        for l in user_lics:
+            if "변리사" in l.replace(" ", ""):
+                has_patent_license = True
+                break
+        if not has_patent_license:
+            msg = "❌ 지원자격 미달 (변리사 자격증 소지 또는 단독 특허 5건 이상 등록 실적 필수)"
+            reasons.append(msg)
+            blockers.append(msg)
+            eligible = False
 
     # ④ 학과 및 자격증 필터
     req_majors = teukgi.get("majors", [])

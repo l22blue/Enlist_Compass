@@ -282,6 +282,19 @@ with col3:
                              value=173.0, step=1.0,
                              help="군사경찰, JSA경비병 등의 보직은 신장 기준을 검사합니다.")
 
+st.markdown("<br>", unsafe_allow_html=True)
+with st.expander("🩺 추가 신체 요건 (훈련소조교병, 의장병, 군사경찰 지원자 필수)", expanded=False):
+    col_add1, col_add2 = st.columns(2)
+    with col_add1:
+        weight = st.number_input("체중 (kg)",
+                                 min_value=30.0, max_value=150.0,
+                                 value=70.0, step=1.0,
+                                 help="조교병, 의장병 등은 체중 기준을 검사합니다.")
+        has_color_blindness = st.checkbox("색각 장애 보유 (색맹/색약)")
+    with col_add2:
+        has_tattoo = st.checkbox("문신 보유 (반팔/반바지 착용 시 겉으로 보이는 위치)")
+        has_disc_joint = st.checkbox("디스크 또는 관절 이상 보유")
+
 st.divider()
 
 # ── 학과 / 자격증 입력 ──
@@ -360,6 +373,10 @@ if st.button("🔍 지원 가능한 보직 찾기", type="primary", use_containe
             "had_surgery": had_surgery,
             "body_grade": body_grade,
             "height": height,
+            "weight": weight,
+            "has_color_blindness": has_color_blindness,
+            "has_tattoo": has_tattoo,
+            "has_disc_joint": has_disc_joint,
             
             "major_input": major_input,
             "double_major_input": double_major_input,
