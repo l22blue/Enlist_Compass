@@ -7,6 +7,7 @@ from datetime import datetime, timezone, timedelta
 import importlib
 from api import mma_api, gemini_api
 from utils import matching
+from utils.hints import get_hint
 
 # Streamlit Cloud 모듈 캐싱 방지용 강제 리로드
 importlib.reload(mma_api)
@@ -283,8 +284,12 @@ if st.session_state.results is not None:
         category = tk.get('category', '')
         row_cols[1].markdown(f"<span style='font-size: 0.9em; font-weight: 500;'>{category}</span>", unsafe_allow_html=True)
         
-        # 3. 특기명 (코드)
-        row_cols[2].markdown(f"**{tk['name']}** <code style='font-size: 0.8em; color: #78909C; background-color: #ECEFF1; padding: 2px 5px; border-radius: 3px;'>{tk['code']}</code>", unsafe_allow_html=True)
+        # 3. 특기명 (코드) + 힌트
+        hint = get_hint(tk['code'], tk['name'])
+        name_md = f"**{tk['name']}** <code style='font-size: 0.8em; color: #78909C; background-color: #ECEFF1; padding: 2px 5px; border-radius: 3px;'>{tk['code']}</code>"
+        if hint:
+            name_md += f"<br><span style='font-size: 0.8em; color: #E65100;'>{hint}</span>"
+        row_cols[2].markdown(name_md, unsafe_allow_html=True)
         
         # 4. 작업 (자세히, 요약, 담기)
         with row_cols[3]:
