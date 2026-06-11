@@ -16,6 +16,20 @@ importlib.reload(matching)
 
 st.set_page_config(page_title="입대 나침반", page_icon="🧭", layout="wide")
 
+# 전역 버튼 스타일 커스텀: 줄바꿈 금지(nowrap) 및 크기 조정
+st.markdown(
+    """
+    <style>
+    div[data-testid="stButton"] button {
+        white-space: nowrap !important;
+        font-size: 0.82em !important;
+        padding: 0.2rem 0.4rem !important;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True
+)
+
 
 def get_secret(name):
     """secrets.toml에 키가 있으면 반환, 없으면 빈 문자열"""
