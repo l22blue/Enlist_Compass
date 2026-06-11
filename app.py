@@ -152,7 +152,24 @@ if "license_count" not in st.session_state:
 c3, c4 = st.columns(2)
 with c3:
     st.markdown("**전공 학과** (고등학교 졸업생은 입력 생략 가능)")
-    major_input = st.text_input("주전공 학과 (선택)", placeholder="예: 컴퓨터공학과, 기계공학과...")
+    major_input = st.text_input("주전공 학과 (선택)", key="major_input_key", placeholder="예: 컴퓨터공학과, 기계공학과...")
+    
+    # 자주 찾는 학과 퀵 버튼
+    st.markdown("<p style='font-size: 0.8em; color: #546E7A; margin: 0 0 2px 0; font-weight: bold;'>💡 자주 찾는 학과</p>", unsafe_allow_html=True)
+    qb_cols = st.columns(6)
+    qbs = [
+        ("💻 컴퓨터", "컴퓨터공학과"),
+        ("🔧 기계", "기계공학과"),
+        ("⚡ 전자", "전자공학과"),
+        ("🧪 화학", "화학공학과"),
+        ("📈 경영", "경영학과"),
+        ("⛪ 신학", "신학과")
+    ]
+    for col, (label, name) in zip(qb_cols, qbs):
+        if col.button(label, key=f"qb_{name}", use_container_width=True):
+            st.session_state.major_input_key = name
+            st.rerun()
+
     double_major_input = st.text_input("이중전공/복수전공 학과 (선택)", placeholder="예: 전자공학과, 드론학과...")
 
 with c4:
