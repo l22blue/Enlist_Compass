@@ -68,28 +68,25 @@ local_data = mma_api.load_local_data()
 _mma = get_secret("MMA_API_KEY")
 _solar = get_secret("SOLAR_API_KEY")
 
-# ── 사이드바: 키 입력 ──
-with st.sidebar:
-    st.title("🧭 입대 나침반")
-    st.caption("내 조건으로 지원 가능한 군 보직 찾기")
-    st.divider()
+# API 키 설정 초기화
+mma_key = _mma
+solar_key = _solar
 
-    if _mma:
-        mma_key = _mma
-    else:
-        st.subheader("🔑 API 키 설정")
-        mma_key = st.text_input("병무청 API 키", type="password",
-                                help="공공데이터포털에서 발급한 키")
+# ── 헤더 영역 (메인 화면) ──
+st.title("🧭 입대 나침반")
+st.caption("내 조건으로 지원 가능한 군 보직을 한눈에 찾아보세요.")
 
-    if _solar:
-        solar_key = _solar
-    else:
-        solar_key = st.text_input("Upstage Solar 키 (선택)", type="password",
-                                  help="학과/자격증 자동 매칭에 사용")
+# 만약 API 키가 누락되었을 때만 expander 형태로 표시
+if not _mma or not _solar:
+    with st.expander("🔑 API 키 설정 (키가 누락된 경우에만 입력하세요)", expanded=True):
+        if not _mma:
+            mma_key = st.text_input("병무청 API 키", type="password",
+                                    help="공공데이터포털에서 발급한 키")
+        if not _solar:
+            solar_key = st.text_input("Upstage Solar 키 (선택)", type="password",
+                                      help="학과/자격증 자동 매칭에 사용")
 
-    st.divider()
-    st.info("⚠️ 본 서비스의 정보는 참고용이며, "
-            "실제 모집 요건은 병무청 공고를 확인하세요.")
+st.warning("⚠️ 본 서비스의 정보는 참고용이며, 실제 모집 요건은 반드시 병무청 공고를 확인하세요.")
 
 # 로컬 데이터가 없는 경우 자동 동기화 실행
 if not local_data and mma_key:
@@ -250,34 +247,93 @@ if st.session_state.results is not None:
         st.info("조건을 만족하는 보직이 없거나 필터 조건에 맞는 모집 일정이 없습니다. "
                 "조건을 조정하거나 필터 체크박스를 해제해 보세요.")
 
-    # 카드 3열 그리드
-    cols = st.columns(3)
+    # 표 헤더 (Table Header)
+    st.markdown("---")
+    header_cols = st.columns([1, 1.8, 3.5, 1.2, 2.5, 2])
+    header_cols[0].markdown("**군**")
+    header_cols[1].markdown("**분류**")
+    header_cols[2].markdown("**특기명 (코드)**")
+    header_cols[3].markdown("**입영월**")
+    header_cols[4].markdown("**모집 상태**")
+    header_cols[5].markdown("**작업**")
+    st.markdown("<hr style='margin: 0.5em 0px; border-color: rgba(49, 51, 63, 0.2);'>", unsafe_allow_html=True)
+
+    # 표 데이터 행 (Table Rows)
     for i, (tk, elig, status, period_str) in enumerate(eligible_with_status):
-        with cols[i % 3]:
-            with st.container(border=True):
-                st.markdown(f"**{tk['name']} ({tk['code']})**")
-                category_str = f" · {tk['category']}" if tk.get("category") else ""
-                st.caption(f"{tk['gun']}{category_str} · {tk.get('field', '')}")
-
-                # 모집 일정 (접수 종료된 과거 정보 등은 period_str이 빈 값으로 오며 미표출됨)
-                if period_str:
-                    st.caption(period_str)
-
-                # 통과 사유
-                for r in elig["reasons"]:
-                    st.caption(r)
-
-                # Solar 요약 (키 있을 때만)
-                if solar_key:
-                    if st.button("💡 하는 업무 요약", key=f"sum_{tk['code']}"):
-                        with st.spinner("요약 중..."):
-                            desc = solar_api.summarize_duty(solar_key, tk["name"])
-                        st.info(desc)
-
-                # 비교 담기
-                if st.button("➕ 비교 담기", key=f"cmp_{tk['code']}"):
+        row_cols = st.columns([1, 1.8, 3.5, 1.2, 2.5, 2])
+        
+        # 1. 군 (Badge)
+        gun = tk['gun']
+        if gun == "육군":
+            gun_color = "#2E7D32"
+        elif gun == "해군":
+            gun_color = "#1565C0"
+        elif gun == "공군":
+            gun_color = "#EF6C00"
+        elif gun == "해병대":
+            gun_color = "#C62828"
+        else:
+            gun_color = "#37474F"
+        row_cols[0].markdown(f"<span style='background-color: {gun_color}1a; color: {gun_color}; padding: 3px 8px; border-radius: 4px; font-weight: bold; font-size: 0.85em;'>{gun}</span>", unsafe_allow_html=True)
+        
+        # 2. 분류
+        category = tk.get('category', '')
+        row_cols[1].markdown(f"<span style='font-size: 0.9em; font-weight: 500;'>{category}</span>", unsafe_allow_html=True)
+        
+        # 3. 특기명 (코드)
+        row_cols[2].markdown(f"**{tk['name']}** <code style='font-size: 0.8em; color: #78909C; background-color: #ECEFF1; padding: 2px 5px; border-radius: 3px;'>{tk['code']}</code>", unsafe_allow_html=True)
+        
+        # 4. 입영예정월
+        enlist_month = tk.get('enlist_start', '')
+        if enlist_month and len(enlist_month) == 6:
+            enlist_month_fmt = f"{enlist_month[2:4]}.{enlist_month[4:]}"
+        else:
+            enlist_month_fmt = "-"
+        row_cols[3].markdown(f"<span style='font-size: 0.9em;'>{enlist_month_fmt}</span>", unsafe_allow_html=True)
+        
+        # 5. 모집 상태
+        if status == "OPEN":
+            status_text = "🟢 **접수 중**"
+        elif status == "UPCOMING":
+            status_text = "🔵 **접수 예정**"
+        else:
+            status_text = "⚪ **접수 마감**"
+        row_cols[4].markdown(f"<span style='font-size: 0.85em;'>{status_text}</span>", unsafe_allow_html=True)
+        
+        # 6. 작업
+        with row_cols[5]:
+            btn_col1, btn_col2 = st.columns(2)
+            with btn_col1:
+                show_summary = st.button("요약", key=f"sum_{tk['code']}", use_container_width=True)
+            with btn_col2:
+                if st.button("담기", key=f"cmp_{tk['code']}", use_container_width=True):
                     if tk not in st.session_state.compare:
                         st.session_state.compare.append(tk)
+                        st.toast(f"'{tk['name']}' 보직을 비교함에 담았습니다! 🧭")
+
+        # 요약 버튼 클릭 시 상세 정보 박스 열기
+        if show_summary:
+            with st.container(border=True):
+                st.markdown(f"##### 🧭 **{tk['name']} ({tk['code']}) 상세 정보**")
+                
+                if period_str:
+                    st.caption(period_str)
+                else:
+                    st.caption("⚪ 현재 모집 일정이 없습니다.")
+
+                st.markdown("**🔍 지원 자격 판정 결과:**")
+                for r in elig["reasons"]:
+                    st.markdown(f"- {r}")
+                
+                if solar_key:
+                    with st.spinner("LLM으로 업무 요약 중..."):
+                        desc = solar_api.summarize_duty(solar_key, tk["name"])
+                    if desc:
+                        st.info(desc)
+                else:
+                    st.caption("ℹ️ Upstage Solar 키를 설정하시면 LLM이 요약해주는 상세 업무 정보를 볼 수 있습니다.")
+
+        st.markdown("<hr style='margin: 0.3em 0px; border-color: rgba(49, 51, 63, 0.08);'>", unsafe_allow_html=True)
 
 # ── 비교 영역 ──
 if st.session_state.compare:
