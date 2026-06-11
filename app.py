@@ -145,6 +145,8 @@ if st.button("🔍 지원 가능한 보직 찾기", type="primary", use_containe
             all_majors = set()
             all_licenses = set()
             for code, tk in teukgi_master.items():
+                if tk.get("category") in ("취업맞춤특기병", "임기제부사관"):
+                    continue
                 all_majors.update(tk.get("majors", []))
                 all_licenses.update(tk.get("licenses", []))
 

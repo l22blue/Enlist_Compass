@@ -157,6 +157,10 @@ def filter_eligible_teukgi(teukgi_master, user, include_unknown=True):
     """
     results = []
     for code, tk in teukgi_master.items():
+        # 취업맞춤특기병 및 임기제부사관 제외 (병사 대상 서비스)
+        category = tk.get("category")
+        if category in ("취업맞춤특기병", "임기제부사관") or tk.get("name", "").startswith("(맞춤)"):
+            continue
         elig = check_eligibility(tk, user)
         if elig["eligible"]:
             results.append((tk, elig))
