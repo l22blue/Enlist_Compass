@@ -35,6 +35,9 @@ def _call_gemini(api_key, system, user, temperature=0.1):
             return result["candidates"][0]["content"]["parts"][0]["text"].strip()
     except urllib.error.HTTPError as e:
         body = e.read().decode("utf-8", errors="ignore")
+        if e.code == 429:
+            # 쿼터 초과 시 조용히 처리 (검색은 정상 작동, AI 매칭만 생략)
+            return ""
         st.warning(f"Gemini 호출 실패: {e.code} {e.reason} — {body[:200]}")
         return ""
     except Exception as e:
