@@ -285,14 +285,19 @@ with col3:
 st.divider()
 
 # ── 학과 / 자격증 입력 ──
-# 세션 상태로 자격증 입력 칸 개수 관리
+# 세션 상태로 자격증 입력 칸 개수 및 전공 입력값 관리
 if "license_count" not in st.session_state:
     st.session_state.license_count = 1
+if "major_input" not in st.session_state:
+    st.session_state.major_input = ""
+
+def update_major():
+    st.session_state.major_input = st.session_state.major_input_widget
 
 c3, c4 = st.columns([5.8, 4.2])
 with c3:
     st.markdown("**전공 학과** (고등학교 졸업생은 입력 생략 가능)")
-    major_input = st.text_input("주전공 학과 (선택)", key="major_input_key", placeholder="예: 컴퓨터공학과, 기계공학과...")
+    major_input = st.text_input("주전공 학과 (선택)", value=st.session_state.major_input, key="major_input_widget", on_change=update_major, placeholder="예: 컴퓨터공학과, 기계공학과...")
     
     # 자주 찾는 학과 퀵 버튼
     st.markdown("<p style='font-size: 0.8em; color: #546E7A; margin: 0 0 2px 0; font-weight: bold;'>💡 자주 찾는 학과</p>", unsafe_allow_html=True)
@@ -307,7 +312,7 @@ with c3:
     ]
     for col, (label, name) in zip(qb_cols, qbs):
         if col.button(label, key=f"qb_{name}", use_container_width=True):
-            st.session_state.major_input_key = name
+            st.session_state.major_input = name
             st.rerun()
 
     double_major_input = st.text_input("이중전공/복수전공 학과 (선택)", placeholder="예: 전자공학과, 드론학과...")
