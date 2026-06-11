@@ -131,7 +131,7 @@ if not local_data and mma_key:
 st.header("내 조건 입력")
 st.caption("점수나 합격 예측이 아니라, **지금 내가 지원할 수 있는 보직**을 찾아드려요.")
 
-col1, col2 = st.columns(2)
+col1, col2, col3 = st.columns(3)
 
 with col1:
     gun = st.selectbox("희망 군종", ["전체", "육군", "해군", "공군", "해병대"])
@@ -155,6 +155,13 @@ with col2:
                                            min_value=0.0, max_value=2.0,
                                            value=1.0, step=0.1)
     had_surgery = st.checkbox("라식/라섹 등 시력교정 수술 받음")
+
+with col3:
+    st.markdown("**신장(키)**")
+    height = st.number_input("신장 (cm)",
+                             min_value=100.0, max_value=250.0,
+                             value=173.0, step=1.0,
+                             help="군사경찰, JSA경비병 등의 보직은 신장 기준을 검사합니다.")
 
 st.divider()
 
@@ -250,6 +257,7 @@ if st.button("🔍 지원 가능한 보직 찾기", type="primary", use_containe
             "vision_corrected": vision_corrected,
             "had_surgery": had_surgery,
             "body_grade": body_grade,
+            "height": height,
             
             "major_input": major_input,
             "double_major_input": double_major_input,

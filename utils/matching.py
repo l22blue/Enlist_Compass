@@ -26,7 +26,14 @@ def find_grade_condition(conditions):
     for name, (low, high) in conditions.items():
         if "신체등급" in name or "신체 등급" in name or "등급" in name:
             return _to_float(low), name
-    return None, None
+def find_height_condition(conditions):
+    """신장(키) 관련 항목 탐색"""
+    for name, (low, high) in conditions.items():
+        if "신장" in name or "키" in name:
+            return _to_float(low), _to_float(high), name
+    return None, None, None
+
+
 def is_major_compatible(user_major, req_major):
     """
     사용자 전공과 모집 요구 전공이 호환되는지 판정 (유연한 휴리스틱 적용).
@@ -149,6 +156,28 @@ def check_eligibility(teukgi, user):
                 eligible = False
         else:
             reasons.append(f"⚠️ 신체등급 요구 {gmin}급 (미입력)")
+
+    # ③-2 신장(키) 필터
+    hlow, hhigh, hname = find_height_condition(conditions)
+    if hlow is not None or hhigh is not None:
+        uh = user.get("height")
+        if uh is not None:
+            if hlow is not None and uh < hlow:
+                msg = f"❌ 신장 미달 (요구 {hlow}cm 이상 / 내 신장 {uh}cm)"
+                reasons.append(msg)
+                blockers.append(msg)
+                eligible = False
+            elif hhigh is not None and uh > hhigh:
+                msg = f"❌ 신장 초과 (요구 {hhigh}cm 이하 / 내 신장 {uh}cm)"
+                reasons.append(msg)
+                blockers.append(msg)
+                eligible = False
+            else:
+                h_range_str = f"{hlow}cm 이상" if hhigh is None else f"{hhigh}cm 이하" if hlow is None else f"{hlow} ~ {hhigh}cm"
+                reasons.append(f"✅ 신장 충족 (요구 {h_range_str} / 내 신장 {uh}cm)")
+        else:
+            h_range_str = f"{hlow}cm 이상" if hhigh is None else f"{hhigh}cm 이하" if hlow is None else f"{hlow} ~ {hhigh}cm"
+            reasons.append(f"⚠️ 신장 요구 {h_range_str} (미입력)")
 
     # ④ 학과 및 자격증 필터
     req_majors = teukgi.get("majors", [])
