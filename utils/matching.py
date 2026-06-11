@@ -29,6 +29,62 @@ def find_grade_condition(conditions):
     return None, None
 
 
+def is_major_compatible(user_major, req_major):
+    """
+    사용자 전공과 모집 요구 전공이 호환되는지 판정 (유연한 휴리스틱 적용).
+    """
+    if not user_major or not req_major:
+        return False
+    u = user_major.replace(" ", "").lower()
+    r = req_major.replace(" ", "").lower()
+
+    # 1. 완전 포함 관계 비교 (기본)
+    if u in r or r in u:
+        return True
+
+    # 2. 전공명 접미사 제거 비교 (학과, 학부, 전공, 과, 학 등)
+    def clean_suffix(s):
+        suffixes = ["학과", "학부", "전공", "과", "학"]
+        changed = True
+        while changed:
+            changed = False
+            for suff in suffixes:
+                if s.endswith(suff):
+                    s = s[:-len(suff)]
+                    changed = True
+                    break
+        return s
+
+    u_stem = clean_suffix(u)
+    r_stem = clean_suffix(r)
+
+    if u_stem and r_stem:
+        if u_stem in r_stem or r_stem in u_stem:
+            return True
+
+    # 3. 핵심 공통 키워드 그룹 비교 (동일 계열 전공 판정)
+    groups = [
+        # 전산/컴퓨터/SW/보안/통신 계열
+        {"컴퓨터", "소프트웨어", "전산", "it", "sw", "개발", "정보통신", "통신", "보안", "정보보호", "전자계산", "네트워크", "시스템", "프로그래밍", "멀티미디어", "웹"},
+        # 전자/전기 계열
+        {"전자", "전기", "반도체", "제어계측"},
+        # 기계 계열
+        {"기계", "메카트로닉스", "자동차", "항공기계", "설계", "로봇"},
+        # 화학/생명/신소재 계열
+        {"화학", "화공", "생명", "바이오", "신소재", "재료", "금속"},
+        # 토목/건축 계열
+        {"토목", "건축", "도시"},
+    ]
+    
+    for group in groups:
+        has_u = any(kw in u for kw in group)
+        has_r = any(kw in r for kw in group)
+        if has_u and has_r:
+            return True
+
+    return False
+
+
 def check_eligibility(teukgi, user):
     """
     하나의 특기(teukgi)에 대해 사용자(user)가 지원 가능한지 판정.
@@ -114,10 +170,8 @@ def check_eligibility(teukgi, user):
         majors_to_check = [m for m in [user_major, user_double_major] if m]
         if req_majors and majors_to_check:
             for user_m in majors_to_check:
-                user_m_clean = user_m.replace(" ", "").lower()
                 for m in req_majors:
-                    m_clean = m.replace(" ", "").lower()
-                    if user_m_clean in m_clean or m_clean in user_m_clean:
+                    if is_major_compatible(user_m, m):
                         has_major_match = True
                         reasons.append(f"✅ 전공 충족 (요구: {m} / 내 전공: {user_m})")
                         break
