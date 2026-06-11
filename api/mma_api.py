@@ -91,34 +91,40 @@ def get_teukgi_master(service_key):
 def get_jiwon_info(service_key):
     """
     지원가능정보 호출 → 특기코드 기준으로 자격/전공 요건 그룹핑.
-    반환: { 특기코드: {licenses:[...], majors:[...]} }
+    코드 형식 불일치 보완을 위해 특기명(gsteukgiNm) 역매핑도 병행.
+    반환: ( {코드: {licenses, majors}}, {특기명: 코드} )
     """
-    raw = _fetch_all(JIWON_URL, service_key)
-    info = defaultdict(lambda: {"licenses": [], "majors": [], "raw": []})
+    # numOfRows=1000으로 늘려 더 많은 데이터 확보 (기본 100 → 1000)
+    raw = _fetch_all(JIWON_URL, service_key, max_pages=1400, rows=1000)
+    info = defaultdict(lambda: {"licenses": [], "majors": []})
+    name_to_code = {}  # 특기명 → 코드 역매핑
 
     for row in raw:
         code = row.get("gsteukgiCd") or ""
+        nm = row.get("gsteukgiNm") or ""
         if not code:
             continue
-        info[code]["raw"].append(row)
-        
+
+        # 특기명 → 코드 역매핑 등록
+        if nm and nm not in name_to_code:
+            name_to_code[nm] = code
+
         gubun = row.get("gubun", "")
-        name = row.get("gtcdNm2", "")
-        if not name:
+        val = row.get("gtcdNm2", "")
+        if not val:
             continue
-            
+
         if gubun == "자격":
-            info[code]["licenses"].append(name)
+            info[code]["licenses"].append(val)
         else:
-            # '학과', '학력' 등은 전공으로 판단
-            info[code]["majors"].append(name)
+            info[code]["majors"].append(val)
 
     # 중복 제거
     for code in info:
         info[code]["licenses"] = list(set(info[code]["licenses"]))
         info[code]["majors"] = list(set(info[code]["majors"]))
 
-    return dict(info)
+    return dict(info), name_to_code
 
 
 @st.cache_data

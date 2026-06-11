@@ -26,9 +26,18 @@ def download_and_save(service_key, output_path):
     jiwon_info = mma_api.get_jiwon_info(service_key)
 
     print("3. 데이터 병합 중...")
+    jiwon_by_code, name_to_code = jiwon_info
+
     for code, tk in teukgi_master.items():
-        tk["licenses"] = jiwon_info.get(code, {}).get("licenses", [])
-        tk["majors"] = jiwon_info.get(code, {}).get("majors", [])
+        # 1차: 특기코드로 직접 매칭
+        jiwon = jiwon_by_code.get(code)
+        # 2차: 특기코드 불일치 시 특기명으로 fallback
+        if not jiwon:
+            alt_code = name_to_code.get(tk.get("name", ""))
+            if alt_code:
+                jiwon = jiwon_by_code.get(alt_code)
+        tk["licenses"] = (jiwon or {}).get("licenses", [])
+        tk["majors"]   = (jiwon or {}).get("majors", [])
 
     # 출력 폴더 생성
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
