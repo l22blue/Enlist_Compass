@@ -263,7 +263,32 @@ if st.session_state.results is not None:
     st.markdown("<hr style='margin: 0.5em 0px; border-color: rgba(49, 51, 63, 0.2);'>", unsafe_allow_html=True)
 
     # 표 데이터 행 (Table Rows)
+    prev_priority = None
     for i, (tk, elig) in enumerate(eligible):
+        cur_priority = elig.get("priority", 0)
+
+        # 우선순위 그룹이 바뀔 때 섹션 헤더 삽입
+        if cur_priority != prev_priority:
+            if cur_priority == 2:
+                st.markdown(
+                    "<div style='margin: 0.6em 0 0.2em; padding: 6px 12px; "
+                    "background: linear-gradient(90deg,#1B5E2022,transparent); "
+                    "border-left: 4px solid #2E7D32; border-radius: 4px; "
+                    "font-weight: 700; font-size: 0.95em; color: #1B5E20;'>"
+                    "🎯 내 조건에 직접 매칭된 보직</div>",
+                    unsafe_allow_html=True,
+                )
+            elif cur_priority == 0 and prev_priority is not None:
+                st.markdown(
+                    "<div style='margin: 1em 0 0.2em; padding: 6px 12px; "
+                    "background: linear-gradient(90deg,#37474F15,transparent); "
+                    "border-left: 4px solid #78909C; border-radius: 4px; "
+                    "font-weight: 600; font-size: 0.9em; color: #546E7A;'>"
+                    "📋 기타 지원 가능 보직 (전공·자격 제한 없음)</div>",
+                    unsafe_allow_html=True,
+                )
+            prev_priority = cur_priority
+
         row_cols = st.columns([1, 1.8, 4.2, 3.0])
         
         # 1. 군 (Badge)
@@ -290,6 +315,7 @@ if st.session_state.results is not None:
         if hint:
             name_md += f"<br><span style='font-size: 0.8em; color: #E65100;'>{hint}</span>"
         row_cols[2].markdown(name_md, unsafe_allow_html=True)
+
         
         # 4. 작업 (자세히, 요약, 담기)
         with row_cols[3]:

@@ -146,14 +146,25 @@ def check_eligibility(teukgi, user):
             blockers.append(msg)
             eligible = False
 
-    return {"eligible": eligible, "reasons": reasons, "blockers": blockers}
+    # 매칭 우선순위 계산:
+    #   2 = 학과 또는 자격증이 구체적으로 매칭됨
+    #   1 = 시력/신체 조건만 있거나 일부 매칭
+    #   0 = 전공/자격 제한 없음 (무조건 통과)
+    if not req_majors and not req_licenses:
+        priority = 0
+    elif has_major_match or has_license_match:
+        priority = 2
+    else:
+        priority = 1
+
+    return {"eligible": eligible, "reasons": reasons, "blockers": blockers, "priority": priority}
 
 
 def filter_eligible_teukgi(teukgi_master, user, include_unknown=True):
     """
     전체 특기 중 사용자가 지원 가능한 것만 필터링.
-    include_unknown=True면 조건 데이터가 없어 판정 불가한 특기도 포함(주의 표시).
-    반환: [(teukgi, eligibility), ...] eligible 우선 정렬
+    우선순위: 2(직접 매칭) > 1(부분 매칭) > 0(제한 없음)
+    반환: [(teukgi, eligibility), ...]
     """
     results = []
     for code, tk in teukgi_master.items():
@@ -169,6 +180,10 @@ def filter_eligible_teukgi(teukgi_master, user, include_unknown=True):
             elig["reasons"].append("⚠️ 신체조건 데이터 없음 - 직접 확인 필요")
             results.append((tk, elig))
 
-    # eligible(블로커 없는 것) 우선
-    results.sort(key=lambda x: (len(x[1]["blockers"]), x[0]["name"]))
+    # 정렬: 블로커 없는 것 우선, 그 안에서 priority 높은 것 우선, 동순위는 이름순
+    results.sort(key=lambda x: (
+        len(x[1]["blockers"]),          # 블로커 없는 것 우선 (오름차순)
+        -x[1].get("priority", 0),       # priority 높은 것 우선 (내림차순)
+        x[0]["name"],                   # 이름 가나다순
+    ))
     return results
