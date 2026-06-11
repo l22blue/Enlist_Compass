@@ -26,6 +26,8 @@ def find_grade_condition(conditions):
     for name, (low, high) in conditions.items():
         if "신체등급" in name or "신체 등급" in name or "등급" in name:
             return _to_float(low), name
+    return None, None
+
 def find_height_condition(conditions):
     """신장(키) 관련 항목 탐색"""
     for name, (low, high) in conditions.items():
@@ -246,10 +248,25 @@ def check_eligibility(teukgi, user):
     return {"eligible": eligible, "reasons": reasons, "blockers": blockers, "priority": priority}
 
 
+def get_category_rank(tk):
+    """보직 카테고리별 정렬 가중치 (전문특기병(1) -> 어학병(2) -> 기술행정병(3) -> 기타(4))"""
+    cat = tk.get("category", "")
+    name = tk.get("name", "")
+    if cat == "전문특기병":
+        return 1
+    elif cat == "어학병" or "어학병" in name:
+        return 2
+    elif "기술행정" in cat or "전문기술" in cat or "일반기술" in cat:
+        return 3
+    else:
+        return 4
+
+
 def filter_eligible_teukgi(teukgi_master, user, include_unknown=True):
     """
     전체 특기 중 사용자가 지원 가능한 것만 필터링.
     우선순위: 2(직접 매칭) > 1(부분 매칭) > 0(제한 없음)
+    그 안에서 카테고리 랭크: 전문특기병 > 어학병 > 기술행정병 > 기타 순
     반환: [(teukgi, eligibility), ...]
     """
     results = []
@@ -266,10 +283,11 @@ def filter_eligible_teukgi(teukgi_master, user, include_unknown=True):
             elig["reasons"].append("⚠️ 신체조건 데이터 없음 - 직접 확인 필요")
             results.append((tk, elig))
 
-    # 정렬: 블로커 없는 것 우선, 그 안에서 priority 높은 것 우선, 동순위는 이름순
+    # 정렬: 블로커 없는 것 우선, 그 안에서 priority 높은 것 우선, 카테고리 랭크 우선, 동순위는 이름순
     results.sort(key=lambda x: (
         len(x[1]["blockers"]),          # 블로커 없는 것 우선 (오름차순)
         -x[1].get("priority", 0),       # priority 높은 것 우선 (내림차순)
+        get_category_rank(x[0]),        # 카테고리 랭크 (오름차순: 1->2->3->4)
         x[0]["name"],                   # 이름 가나다순
     ))
     return results
