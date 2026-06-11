@@ -4,8 +4,14 @@
 """
 import streamlit as st
 from datetime import datetime, timezone, timedelta
+import importlib
 from api import mma_api, solar_api
 from utils import matching
+
+# Streamlit Cloud 모듈 캐싱 방지용 강제 리로드
+importlib.reload(mma_api)
+importlib.reload(solar_api)
+importlib.reload(matching)
 
 st.set_page_config(page_title="입대 나침반", page_icon="🧭", layout="wide")
 
