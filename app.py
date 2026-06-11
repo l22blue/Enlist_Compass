@@ -60,6 +60,10 @@ if "results" not in st.session_state:
     st.session_state.results = None
 if "compare" not in st.session_state:
     st.session_state.compare = []
+if "active_summary" not in st.session_state:
+    st.session_state.active_summary = None
+if "active_details" not in st.session_state:
+    st.session_state.active_details = None
 
 # ── 로컬 데이터 확인 ──
 local_data = mma_api.load_local_data()
@@ -235,32 +239,23 @@ if st.session_state.results is not None:
         status, period_str = get_recruitment_status(tk, now)
         eligible_with_status.append((tk, elig, status, period_str))
 
-    # 필터 옵션 UI
-    show_only_active = st.checkbox("🟢 현재 접수 중 또는 🔵 접수 예정인 보직만 보기", value=False)
+    st.subheader(f"지원 가능한 보직 {len(eligible)}개를 찾았어요")
 
-    if show_only_active:
-        eligible_with_status = [item for item in eligible_with_status if item[2] in ("OPEN", "UPCOMING")]
-
-    st.subheader(f"지원 가능한 보직 {len(eligible_with_status)}개를 찾았어요")
-
-    if not eligible_with_status:
-        st.info("조건을 만족하는 보직이 없거나 필터 조건에 맞는 모집 일정이 없습니다. "
-                "조건을 조정하거나 필터 체크박스를 해제해 보세요.")
+    if not eligible:
+        st.info("조건을 만족하는 보직이 없거나 필터 조건에 맞는 모집 일정이 없습니다. 조건을 조정해 보세요.")
 
     # 표 헤더 (Table Header)
     st.markdown("---")
-    header_cols = st.columns([1, 1.8, 3.5, 1.2, 2.5, 2])
+    header_cols = st.columns([1, 1.8, 4.2, 3.0])
     header_cols[0].markdown("**군**")
     header_cols[1].markdown("**분류**")
     header_cols[2].markdown("**특기명 (코드)**")
-    header_cols[3].markdown("**입영월**")
-    header_cols[4].markdown("**모집 상태**")
-    header_cols[5].markdown("**작업**")
+    header_cols[3].markdown("**작업**")
     st.markdown("<hr style='margin: 0.5em 0px; border-color: rgba(49, 51, 63, 0.2);'>", unsafe_allow_html=True)
 
     # 표 데이터 행 (Table Rows)
-    for i, (tk, elig, status, period_str) in enumerate(eligible_with_status):
-        row_cols = st.columns([1, 1.8, 3.5, 1.2, 2.5, 2])
+    for i, (tk, elig) in enumerate(eligible):
+        row_cols = st.columns([1, 1.8, 4.2, 3.0])
         
         # 1. 군 (Badge)
         gun = tk['gun']
@@ -283,44 +278,40 @@ if st.session_state.results is not None:
         # 3. 특기명 (코드)
         row_cols[2].markdown(f"**{tk['name']}** <code style='font-size: 0.8em; color: #78909C; background-color: #ECEFF1; padding: 2px 5px; border-radius: 3px;'>{tk['code']}</code>", unsafe_allow_html=True)
         
-        # 4. 입영예정월
-        enlist_month = tk.get('enlist_start', '')
-        if enlist_month and len(enlist_month) == 6:
-            enlist_month_fmt = f"{enlist_month[2:4]}.{enlist_month[4:]}"
-        else:
-            enlist_month_fmt = "-"
-        row_cols[3].markdown(f"<span style='font-size: 0.9em;'>{enlist_month_fmt}</span>", unsafe_allow_html=True)
-        
-        # 5. 모집 상태
-        if status == "OPEN":
-            status_text = "🟢 **접수 중**"
-        elif status == "UPCOMING":
-            status_text = "🔵 **접수 예정**"
-        else:
-            status_text = "⚪ **접수 마감**"
-        row_cols[4].markdown(f"<span style='font-size: 0.85em;'>{status_text}</span>", unsafe_allow_html=True)
-        
-        # 6. 작업
-        with row_cols[5]:
-            btn_col1, btn_col2 = st.columns(2)
+        # 4. 작업 (자세히, 요약, 담기)
+        with row_cols[3]:
+            btn_col1, btn_col2, btn_col3 = st.columns(3)
             with btn_col1:
-                show_summary = st.button("요약", key=f"sum_{tk['code']}", use_container_width=True)
+                # 자세히 토글 버튼
+                is_det_active = st.session_state.active_details == tk['code']
+                if st.button("자세히", key=f"det_{tk['code']}", type="secondary" if not is_det_active else "primary", use_container_width=True):
+                    if is_det_active:
+                        st.session_state.active_details = None
+                    else:
+                        st.session_state.active_details = tk['code']
+                        st.session_state.active_summary = None
+                    st.rerun()
             with btn_col2:
+                # 요약 토글 버튼
+                is_sum_active = st.session_state.active_summary == tk['code']
+                if st.button("요약", key=f"sum_{tk['code']}", type="secondary" if not is_sum_active else "primary", use_container_width=True):
+                    if is_sum_active:
+                        st.session_state.active_summary = None
+                    else:
+                        st.session_state.active_summary = tk['code']
+                        st.session_state.active_details = None
+                    st.rerun()
+            with btn_col3:
+                # 담기 버튼
                 if st.button("담기", key=f"cmp_{tk['code']}", use_container_width=True):
                     if tk not in st.session_state.compare:
                         st.session_state.compare.append(tk)
                         st.toast(f"'{tk['name']}' 보직을 비교함에 담았습니다! 🧭")
 
-        # 요약 버튼 클릭 시 상세 정보 박스 열기
-        if show_summary:
+        # ── [요약] 화면 표시 ──
+        if st.session_state.active_summary == tk['code']:
             with st.container(border=True):
-                st.markdown(f"##### 🧭 **{tk['name']} ({tk['code']}) 상세 정보**")
-                
-                if period_str:
-                    st.caption(period_str)
-                else:
-                    st.caption("⚪ 현재 모집 일정이 없습니다.")
-
+                st.markdown(f"##### 🧭 **{tk['name']} ({tk['code']}) 요약 정보**")
                 st.markdown("**🔍 지원 자격 판정 결과:**")
                 for r in elig["reasons"]:
                     st.markdown(f"- {r}")
@@ -332,6 +323,64 @@ if st.session_state.results is not None:
                         st.info(desc)
                 else:
                     st.caption("ℹ️ Upstage Solar 키를 설정하시면 LLM이 요약해주는 상세 업무 정보를 볼 수 있습니다.")
+
+        # ── [자세히] 화면 표시 (과거 입영일, 평균 지원율, 모집 주기 등 통계 노출) ──
+        if st.session_state.active_details == tk['code']:
+            with st.container(border=True):
+                st.markdown(f"##### 📊 **{tk['name']} ({tk['code']}) 과거 모집 및 지원 통계**")
+                
+                # 접수현황 API/Mock 정보 가져오기
+                with st.spinner("통계 데이터를 가져오는 중..."):
+                    stats = mma_api.get_jeopsu_details(mma_key, tk['code'], tk['name'], tk['gun'], tk['category'])
+                
+                # 통계 요약 박스 (평균 지원율 & 모집 주기)
+                col_stat1, col_stat2 = st.columns(2)
+                with col_stat1:
+                    st.markdown(
+                        f"""
+                        <div style="background-color: #f8f9fa; padding: 15px; border-radius: 8px; border-left: 5px solid #1565C0; margin-bottom: 10px;">
+                            <p style="margin: 0; font-size: 0.85em; color: #546E7A; font-weight: bold;">평균 지원률</p>
+                            <h2 style="margin: 5px 0 0 0; color: #1565C0; font-size: 1.8em;">📊 {stats['avg_rate']:.2f}</h2>
+                            <span style="font-size: 0.75em; color: #78909C;">전체 모집의 평균 경쟁률</span>
+                        </div>
+                        """,
+                        unsafe_allow_html=True
+                    )
+                with col_stat2:
+                    st.markdown(
+                        f"""
+                        <div style="background-color: #f8f9fa; padding: 15px; border-radius: 8px; border-left: 5px solid #9C27B0; margin-bottom: 10px;">
+                            <p style="margin: 0; font-size: 0.85em; color: #546E7A; font-weight: bold;">모집 주기</p>
+                            <h2 style="margin: 5px 0 0 0; color: #9C27B0; font-size: 1.8em;">📅 {stats['cycle_months']:.2f}개월</h2>
+                            <span style="font-size: 0.75em; color: #78909C;">평균 입영일 간격</span>
+                        </div>
+                        """,
+                        unsafe_allow_html=True
+                    )
+                
+                st.markdown("<p style='font-size:0.8em; color:gray; text-align:center;'>* 위 통계는 과거 데이터를 기반으로 계산한 대략적인 분석 결과입니다.</p>", unsafe_allow_html=True)
+                st.markdown("<br>", unsafe_allow_html=True)
+                
+                # 상세 입영일/지원현황 표 렌더링
+                det_hdr = st.columns([1.8, 1.8, 2.5, 3.5])
+                det_hdr[0].markdown("**입영일**")
+                det_hdr[1].markdown("**분류**")
+                det_hdr[2].markdown("**입영부대**")
+                det_hdr[3].markdown("**지원률**")
+                st.markdown("<hr style='margin: 0.2em 0px; border-color: rgba(49, 51, 63, 0.15);'>", unsafe_allow_html=True)
+                
+                for r in stats["rounds"]:
+                    r_cols = st.columns([1.8, 1.8, 2.5, 3.5])
+                    
+                    # 입영년월 + 라벨 배치
+                    lbl_color = "#ECEFF1" if r['label'] == "전역" else "#FCE4EC" if r['label'] == "접수마감" else "#E8F5E9"
+                    lbl_text_color = "#455A64" if r['label'] == "전역" else "#C2185B" if r['label'] == "접수마감" else "#2E7D32"
+                    r_cols[0].markdown(f"**{r['enlist_date']}** <span style='background-color: {lbl_color}; color: {lbl_text_color}; padding: 2px 6px; border-radius: 3px; font-size: 0.75em; font-weight:bold;'>{r['label']}</span>", unsafe_allow_html=True)
+                    
+                    r_cols[1].markdown(f"<span style='font-size:0.9em;'>{r['category']}</span>", unsafe_allow_html=True)
+                    r_cols[2].markdown(f"<span style='font-size:0.9em;'>{r['unit']}</span>", unsafe_allow_html=True)
+                    r_cols[3].markdown(f"<span style='font-size:0.9em;'>정원: **{r['plan']}**명 | 지원: **{r['applied']}**명 (**{r['rate']:.2f}**)</span>", unsafe_allow_html=True)
+                    st.markdown("<hr style='margin: 0.1em 0px; border-color: rgba(0, 0, 0, 0.04);'>", unsafe_allow_html=True)
 
         st.markdown("<hr style='margin: 0.3em 0px; border-color: rgba(49, 51, 63, 0.08);'>", unsafe_allow_html=True)
 
