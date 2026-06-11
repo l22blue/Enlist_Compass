@@ -16,19 +16,89 @@ importlib.reload(matching)
 
 st.set_page_config(page_title="입대 나침반", page_icon="🧭", layout="wide")
 
-# 전역 버튼 스타일 커스텀: 줄바꿈 금지(nowrap) 및 크기 조정
+# 전역 스타일 커스텀: 프리미엄 밀리터리 다크 모드 및 글래스모피즘 CSS 주입
 st.markdown(
     """
     <style>
+    @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&family=Noto+Sans+KR:wght@300;400;500;700&display=swap');
+    
+    html, body, [data-testid="stAppViewContainer"], [data-testid="stHeader"] {
+        font-family: 'Outfit', 'Noto Sans KR', sans-serif !important;
+    }
+    
+    /* 글로잉 밀리터리 타이틀 */
+    .military-title {
+        font-family: 'Outfit', 'Noto Sans KR', sans-serif;
+        font-weight: 700;
+        font-size: 2.8rem;
+        background: linear-gradient(135deg, #C2D1C5 0%, #6D8E72 50%, #445647 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        margin-bottom: 0.1rem;
+        text-shadow: 0 0 20px rgba(92, 122, 96, 0.15);
+    }
+    
+    /* 전역 버튼 커스텀 */
     div[data-testid="stButton"] button {
         white-space: nowrap !important;
-        font-size: 0.82em !important;
-        padding: 0.2rem 0.4rem !important;
+        font-size: 0.85em !important;
+        padding: 0.4rem 0.8rem !important;
+        border-radius: 8px !important;
+        transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
+        font-family: 'Noto Sans KR', sans-serif !important;
+        font-weight: 500 !important;
+    }
+    
+    /* 기본(Primary) 버튼 강조 */
+    div[data-testid="stButton"] button[kind="primary"] {
+        background-color: #5C7A60 !important;
+        color: #E2EAE4 !important;
+        border: 1px solid rgba(116, 150, 120, 0.4) !important;
+        box-shadow: 0 4px 12px rgba(92, 122, 96, 0.25) !important;
+    }
+    
+    div[data-testid="stButton"] button[kind="primary"]:hover {
+        background-color: #6D8E72 !important;
+        box-shadow: 0 6px 20px rgba(92, 122, 96, 0.4) !important;
+        transform: translateY(-1px);
+        border-color: rgba(116, 150, 120, 0.8) !important;
+    }
+    
+    /* 카드 컨테이너(글래스모피즘 & 밀리터리 보더) */
+    div[data-testid="stVerticalBlockBorder"] {
+        background: rgba(30, 37, 32, 0.45) !important;
+        border: 1px solid rgba(92, 122, 96, 0.22) !important;
+        border-radius: 12px !important;
+        box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.25) !important;
+        padding: 1.25rem !important;
+        transition: all 0.3s ease !important;
+    }
+    
+    div[data-testid="stVerticalBlockBorder"]:hover {
+        border-color: rgba(109, 142, 114, 0.4) !important;
+        box-shadow: 0 8px 32px 0 rgba(92, 122, 96, 0.08) !important;
+    }
+    
+    /* 입력 필드 스타일링 보완 */
+    div[data-baseweb="input"], div[data-baseweb="select"] {
+        border-radius: 8px !important;
+        border-color: rgba(92, 122, 96, 0.2) !important;
+    }
+    
+    /* 사이드바 어두운 밀리터리 그레이 */
+    [data-testid="stSidebar"] {
+        background-color: #161B18 !important;
+    }
+    
+    /* 경고 상자 커스텀 */
+    div[data-testid="stNotification"] {
+        border-radius: 8px !important;
     }
     </style>
     """,
     unsafe_allow_html=True
 )
+
 
 
 def get_secret(name):
@@ -101,7 +171,7 @@ gemini_key = _gemini
 
 # ── 인트로 (설문조사) 페이지 분기 ──
 if st.session_state.page == "intro":
-    st.title("🧭 입대 나침반")
+    st.markdown("<h1 class='military-title'>🧭 입대 나침반</h1>", unsafe_allow_html=True)
     st.caption("내 조건으로 지원 가능한 군 보직을 한눈에 찾아보세요.")
     st.warning("⚠️ 본 서비스의 정보는 참고용이며, 실제 모집 요건은 반드시 병무청 공고를 확인하세요.")
     
@@ -217,7 +287,7 @@ with st.sidebar:
         st.session_state.page = "intro"
         st.rerun()
 
-st.title("🧭 입대 나침반")
+st.markdown("<h1 class='military-title'>🧭 입대 나침반</h1>", unsafe_allow_html=True)
 st.caption("내 조건으로 지원 가능한 군 보직을 한눈에 찾아보세요.")
 
 # 만약 API 키가 누락되었을 때만 expander 형태로 표시
